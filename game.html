@@ -1,96 +1,127 @@
 <!DOCTYPE html>
 <html lang="en">
-    <head>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <meta http-equiv="X-UA-Compatible" content="ie=edge" />
-        <title>Jogo</title>
-        <style>
-            #game {
-                image-rendering: pixelated;
-                image-rendering: crisp-edges;
-                image-rendering: -moz-crisp-edges;
-                -webkit-box-shadow: 0px 4px 17px 0px rgba(0, 0, 0, 0.19);
-                -moz-box-shadow: 0px 4px 17px 0px rgba(0, 0, 0, 0.19);
-                box-shadow: 0px 4px 17px 0px rgba(0, 0, 0, 0.19);
-                margin-bottom: 20px;
-                margin-left: 20px;
-                margin-right: 20px;
-                display: inline-block;
-                vertical-align: top;
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <title>Jogo</title>
+    <style>
+        #game {
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+            image-rendering: -moz-crisp-edges;
+            -webkit-box-shadow: 0px 4px 17px 0px rgba(0, 0, 0, 0.19);
+            -moz-box-shadow: 0px 4px 17px 0px rgba(0, 0, 0, 0.19);
+            box-shadow: 0px 4px 17px 0px rgba(0, 0, 0, 0.19);
+            margin-bottom: 20px;
+            margin-left: 20px;
+            margin-right: 20px;
+            display: inline-block;
+            vertical-align: top;
+        }
+    </style>
+</head>
+
+<body>
+    <canvas style="border: 1px solid black;" id="game"></canvas>
+    <script src="http://localhost:3000/socket.io/socket.io.js"></script>
+    <script>
+        var socket = io.connect('http://localhost:3000');
+        const canvas = document.getElementById('game');
+        const game = {
+            players: {}
+        };
+
+        window.addEventListener('keydown', e => {
+            const player = game.players[socket.id];
+
+            if (e.keyCode === 87 && player.y - player.height >= 0) {
+                player.y -= player.height;
+                socket.emit('move_player', 'up');
             }
-        </style>
-    </head>
-    <body>
-        <canvas style="border: 1px solid black;" id="game"></canvas>
-        <script src="http://localhost:3000/socket.io/socket.io.js"></script>
-        <script>
-            var socket = io.connect('http://localhost:3000');
-            const canvas = document.getElementById('game');
-            const game = {
-                players: {}
-            };
+            if (e.keyCode === 65 && player.x - player.width >= 0) {
+                player.x -= player.width;
+                socket.emit('move_player', 'left');
+            }
+            if (
+                e.keyCode === 83 &&
+                player.y + player.height < canvas.height
+            ) {
+                player.y += player.height;
+                socket.emit('move_player', 'down');
+            }
+            if (
+                e.keyCode === 68 &&
+                player.x + player.width < canvas.width
+            ) {
+                player.x += player.width;
+                socket.emit('move_player', 'right');
+            }
+        });
 
-            window.addEventListener('keydown', e => {
-                const player = game.players[socket.id];
+        socket.on('connect', event => {
+            console.log('User Connected');
+        });
+        socket.on('disconnect', event => {
+            console.log('User disconnected');
+        });
+        socket.on('player_moved', event => {
+            game.players[event.id] = event.player;
+        });
+        socket.on('add_player', event => {
+            game.players[event.id] = event.player;
+        })
+        socket.on('build_game', event => {
+            canvas.style.width = `${event.canvasWidth * 18}px`;
+            canvas.style.height = `${event.canvasHeight * 18}px`;
+            canvas.width = event.canvasWidth;
+            canvas.height = event.canvasHeight;
 
-                if (e.keyCode === 87 && player.y - player.height >= 0) {
-                    player.y -= player.height;
-                }
-                if (e.keyCode === 65 && player.x - player.width >= 0) {
-                    player.x -= player.width;
-                }
-                if (
-                    e.keyCode === 83 &&
-                    player.y + player.height < canvas.height
-                ) {
-                    player.y += player.height;
-                }
-                if (
-                    e.keyCode === 68 &&
-                    player.x + player.width < canvas.width
-                ) {
-                    player.x += player.width;
-                }
-            });
+            const context = canvas.getContext('2d');
 
-            socket.on('connect', event => {
-                console.log('User Connected');
-            });
-            socket.on('disconnect', event => {
-                console.log('User disconnected');
-            });
-            socket.on('build_game', event => {
-                canvas.style.width = `${event.canvasWidth * 18}px`;
-                canvas.style.height = `${event.canvasHeight * 18}px`;
-                canvas.width = event.canvasWidth;
-                canvas.height = event.canvasHeight;
+            game.players = event.players;
 
-                const context = canvas.getContext('2d');
+            requestAnimationFrame(render);
+            function render() {
+                const currentPlayer = event.players[socket.id];
+                game.players[socket.id] = currentPlayer;
+
+                context.globalAlpha = 1;
+                context.fillStyle = 'white';
+                context.fillRect(
+                    0,
+                    0,
+                    event.canvasWidth,
+                    event.canvasHeight
+                );
+                context.globalAlpha = 1;
+                context.fillStyle = 'black';
+                for (player in game.players) {
+                    if (player !== socket.id) {
+                        context.fillStyle = 'gray';
+                        context.fillRect(
+                            game.players[player].x,
+                            game.players[player].y,
+                            game.players[player].width,
+                            game.players[player].height
+                        );
+                    }
+                }
+
+                context.fillStyle = 'black';
+                context.fillRect(
+                    currentPlayer.x,
+                    currentPlayer.y,
+                    currentPlayer.width,
+                    currentPlayer.height
+                );
+
 
                 requestAnimationFrame(render);
-                function render() {
-                    context.globalAlpha = 1;
-                    context.fillStyle = 'white';
-                    context.fillRect(
-                        0,
-                        0,
-                        event.canvasWidth,
-                        event.canvasHeight
-                    );
-                    context.globalAlpha = 1;
-                    context.fillStyle = 'black';
-                    const currentPlayer = event.players[socket.id];
-                    game.players[socket.id] = currentPlayer;
-                    context.fillRect(
-                        currentPlayer.x,
-                        currentPlayer.y,
-                        currentPlayer.width,
-                        currentPlayer.height
-                    );
-                    requestAnimationFrame(render);
-                }
-            });
-        </script>
-    </body>
+            }
+        });
+    </script>
+</body>
+
 </html>
