@@ -15,15 +15,18 @@ io.on('connection', socket => {
         id: socket.id
     });
 
-    socket.on('move_player', (direction) => {
+    socket.on('move_player', direction => {
         const player = game.players[socket.id];
-        console.log(player)
         player.move(direction);
-        console.log(player)
         socket.broadcast.emit('player_moved', {
             player,
             id: socket.id
         });
+    });
+
+    socket.on('disconnect', event => {
+        game.removePlayer(socket.id);
+        socket.broadcast.emit('player_disconnected', { id: socket.id });
     });
 });
 

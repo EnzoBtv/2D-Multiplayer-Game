@@ -11,6 +11,9 @@ class Game {
         this.players[id] = new Player();
         return this.players[id];
     }
+    removePlayer(id) {
+        delete this.players[id];
+    }
 }
 
 module.exports = Game;
